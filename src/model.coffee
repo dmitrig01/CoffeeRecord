@@ -30,7 +30,7 @@ module.exports = class Model
     _dehydrate: ->
         values = {}
         for field, _ of @fields
-            values[field] = this[field]
+            values[field] = this[field]
         values
 
     # GENERAL METHODS
