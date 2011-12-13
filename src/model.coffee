@@ -34,8 +34,16 @@ module.exports = class Model
         values
 
     # GENERAL METHODS
+    @_extend: ->
+        if !@_select
+            options = { _select: true }
+            options[key] = this[key] for key of this
+            options
+        else
+            this
+            
     @where: (key, value, op = '=') ->
-        options = this
+        options = @_extend()
         if typeof key == 'object'
             options = @where.call options, k, v for k, v of key
         else
@@ -44,23 +52,23 @@ module.exports = class Model
         options
 
     @limit: (limit) ->
-        options = this
+        options = @_extend()
         options._limit = limit
         options
 
     @offset: (offset) ->
-        options = this
+        options = @_extend()
         options._offset = offset
         options
 
     @order: (field, direction = 'ASC') ->
-        options = this
+        options = @_extend()
         options._order_field = field
         options._order_direction = direction
         options
 
     @_query: ->
-        options = this
+        options = @_extend()
         fields = ['where', 'limit', 'offset', 'order_field', 'order_direction']
         final_options = { table: @table }
         final_options[field] = options['_' + field] for field of fields
