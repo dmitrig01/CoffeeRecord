@@ -36,7 +36,7 @@ module.exports = class Model
     # GENERAL METHODS
     @_extend: ->
         if !@_select
-            options = { _select: true }
+            options = _select: true
             options[key] = this[key] for key of this
             options
         else
@@ -69,19 +69,19 @@ module.exports = class Model
 
     @_query: ->
         options = @_extend()
-        fields = ['where', 'limit', 'offset', 'order_field', 'order_direction']
-        final_options = { table: @table }
-        final_options[field] = options['_' + field] for field of fields
+        fields = [ 'where', 'limit', 'offset', 'order_field', 'order_direction' ]
+        final_options = table: @table
+        final_options[field] = options['_' + field] for field in fields
         final_options
 
     @each: (callback) ->
         callback ?= ->
-        @db.each @_query (row) ->
+        @db.each @_query(), (row) =>
             callback new @self row
 
     @all: (callback) ->
         callback ?= ->
-        @db.all @_query (rows) ->
+        @db.all @_query(), (rows) =>
             callback (new @self row for row in rows)
 
     @new: -> new @self

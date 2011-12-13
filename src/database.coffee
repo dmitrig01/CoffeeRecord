@@ -1,3 +1,5 @@
+_ = require 'underscore'
+
 exports.factory = (options) ->
     switch options.db
         when 'sqlite' then this.sqlite options
@@ -7,8 +9,29 @@ exports.sqlite = (options) ->
     db = new sqlite.Database options.file
 
     {
-        query: (options, callback) ->
-            db.all "SELECT * FROM #{options.table} WHERE id = ?", [ options.filters.id[0] ], (err, rows) ->
+        query: (options) ->
+            query = "SELECT * FROM #{options.table}"
+            values = []
+            if options.where
+                query += ' WHERE ' + (for where in options.where
+                    values.push where.value
+                    "#{where.key} #{where.op} ?").join ' AND '
+            if options.limit?
+                query += ' LIMIT ' + options.limit
+            if options.offset?
+                query += ' OFFSET ' + options.offset
+            { query, values }
+
+        each: (options, callback) ->
+            callback ?= ->
+            { query, values } = @query options
+            db.each query, values, (err, row) ->
+                if err then throw err
+                callback row
+        all: (options, callback) ->
+            callback ?= ->
+            { query, values } = @query options
+            db.all query, values, (err, rows) ->
                 if err then throw err
                 callback rows
         save: (options, callback) ->
