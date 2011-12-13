@@ -14,8 +14,15 @@ exports.sqlite = (options) ->
             values = []
             if options.where
                 query += ' WHERE ' + (for where in options.where
-                    values.push where.value
-                    "#{where.key} #{where.op} ?").join ' AND '
+                    if _(where.value).isArray()
+                        qs = []
+                        for i in where.value
+                            values.push i
+                            qs.push '?'
+                        "#{where.key} IN (" + qs.join(', ') + ')'
+                    else
+                        values.push where.value
+                        "#{where.key} #{where.op} ?").join ' AND '
             if options.limit?
                 query += ' LIMIT ' + options.limit
             if options.offset?
@@ -34,8 +41,28 @@ exports.sqlite = (options) ->
             db.all query, values, (err, rows) ->
                 if err then throw err
                 callback rows
-        save: (options, callback) ->
-            callback()
+        save: (table, fields, callback) ->
+            values = []
+            if fields.id
+                query = "UPDATE #{table} SET " +
+                (for key, value of fields when key != 'id'
+                    values.push value
+                    "#{key} = ?").join(', ') +
+                ' WHERE id = ?'
+                values.push fields.id
+            else
+                keys = []
+                qs = []
+                values = []
+                for key, value of fields when value?
+                    keys.push key
+                    values.push value
+                    qs.push '?'
+                query = "INSERT INTO #{table} (" + keys.join(', ') + ') VALUES (' + qs.join(', ') + ')'
+            console.log query
+            console.log values
+            db.run query, values, -> 
+                callback this.lastID
         fields: (table, callback) ->
             types =
                 INTEGER: 'int'

@@ -15,25 +15,8 @@ module.exports = class Model
                 self.fields = self.prototype.fields = fields
                 callback()
 
-    constructor: (values) ->
-        values ?= {}
-        if typeof values == 'function'
-            values this
-        else
-            @_hydrate values
-
-    _hydrate: (values) ->
-        values ?= {}
-        for key, value of values
-            this[key] = value
-
-    _dehydrate: ->
-        values = {}
-        for field, _ of @fields
-            values[field] = this[field]
-        values
-
     # GENERAL METHODS
+
     @_extend: ->
         if !@_select
             options = _select: true
@@ -84,22 +67,36 @@ module.exports = class Model
         @db.all @_query(), (rows) =>
             callback (new @self row for row in rows)
 
-    @new: -> new @self
+    @new: (options) -> new @self (options)
 
     @find: (id, callback) ->
         @where('id', id).limit(1).each callback
 
+    @create: (options, callback) -> @new(options).save callback
+
     # INSTANCE METHODS
+    constructor: (values) ->
+        values ?= {}
+        if typeof values == 'function'
+            values this
+        else
+            @_hydrate values
+
+    _hydrate: (values) ->
+        values ?= {}
+        for key, value of values
+            this[key] = value
+
+    _dehydrate: ->
+        values = {}
+        for field, _ of @fields
+            values[field] = this[field]
+        values
+
     save: (callback) ->
-        @db.save @_dehydrate(), callback
+        @db.save @table, @_dehydrate(), (id) =>
+            this.id = id
+            callback this
+
     destroy: (callback) ->
         @db.destroy @id, callback
-
-
-###
-For when more general methods are implemented, a way of chaining -- just need to extract proper keys at the end.
-    @where: ->
-        options = this
-        options.foo = bar
-        options
-###
