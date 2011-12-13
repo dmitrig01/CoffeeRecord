@@ -27,7 +27,9 @@ exports.sqlite = (options) ->
                 query += ' LIMIT ' + options.limit
             if options.offset?
                 query += ' OFFSET ' + options.offset
-            { query, values }
+
+            query: query
+            values: values
 
         each: (options, callback) ->
             callback ?= ->

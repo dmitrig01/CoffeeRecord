@@ -15,6 +15,18 @@ module.exports = class Model
                 self.fields = self.prototype.fields = fields
                 callback()
 
+    @has_many: (name, options = {}) ->
+        @prototype._associations ?= {}
+        @prototype._associations[name] = { type: 'has_many', options }
+
+    @belongs_to: (name, options = {}) ->
+        @prototype._associations ?= {}
+        @prototype._associations[name] = { type: 'belongs_to', options }
+
+    @has_one: (name, options = {}) ->
+        @prototype._associations ?= {}
+        @prototype._associations[name] = { type: 'has_one', options }
+
     # GENERAL METHODS
 
     @_extend: ->
@@ -81,6 +93,12 @@ module.exports = class Model
             values this
         else
             @_hydrate values
+        if @id
+            for name, assoc of @_associations
+                class_name = assoc.options.class_name ? do (name) -> name.charAt(0).toUpperCase() + name.substring 1
+                if assoc.type == 'has_many'
+                    this[name + 's'] = @_models[class_name].where(assoc.options.foreign_key ? @_name.toLowerCase() + '_id', @id)
+                # need to come up with something for other associations
 
     _hydrate: (values) ->
         values ?= {}
