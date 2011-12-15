@@ -27,6 +27,9 @@ module.exports = class Model
         @prototype._associations ?= {}
         @prototype._associations[name] = { type: 'has_one', options }
 
+    @validates: (name, options = {}) ->
+        @prototype._validations[name] = options
+
     # GENERAL METHODS
 
     @_extend: ->
@@ -111,6 +114,15 @@ module.exports = class Model
             values[field] = this[field]
         values
 
+    valid: ->
+        valid = true
+        for key, validations of @_validations
+            for name, options of validations
+                if !_(options).isArray()
+                    options = [options]
+                valid = valid && @validations[name].call this, [this[key]].concat options
+        valid
+
     save: (callback) ->
         @db.save @table, @_dehydrate(), (id) =>
             this.id = id
@@ -118,3 +130,11 @@ module.exports = class Model
 
     destroy: (callback) ->
         @db.destroy @id, callback
+
+
+    validations: {
+        presence: (field, presence) ->
+            ('' != field.replace /^\s+|\s+$/g, '') == presence
+    }
+
+
