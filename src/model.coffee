@@ -1,6 +1,7 @@
 _ = require 'underscore'
+EventEmitter = require('events').EventEmitter
 
-module.exports = class Model
+module.exports = class Model extends EventEmitter
     # INITIALIZATION METHODS
 
     @init: (db, self, callback) ->
@@ -124,8 +125,10 @@ module.exports = class Model
         valid
 
     save: (callback) ->
+        @emit 'beforeSave', this
         @db.save @table, @_dehydrate(), (id) =>
             this.id = id
+            @emit 'afterSave', this
             callback this
 
     destroy: (callback) ->
