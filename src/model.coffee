@@ -102,7 +102,10 @@ module.exports = class Model extends EventEmitter
                 class_name = assoc.options.class_name ? do (name) -> name.charAt(0).toUpperCase() + name.substring 1
                 if assoc.type == 'has_many'
                     this[name + 's'] = @_models[class_name].where(assoc.options.foreign_key ? @_name.toLowerCase() + '_id', @id)
-                # need to come up with something for other associations
+                else if assoc.type == 'has_one'
+                    this[name] = (cb) -> @_models[class_name].where(assoc.options.foreign_key ? @_name.toLowerCase() + '_id', @id).limit(1).each cb
+                else if assoc.type == 'belongs_to'
+                    this[name] = (cb) -> @_models[class_name].where('id', this[assoc.options.foreign_key ? @_name.toLowerCase() + '_id']).limit(1).each cb
 
     _hydrate: (values) ->
         values ?= {}
