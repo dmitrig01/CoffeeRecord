@@ -23,6 +23,8 @@ exports.sqlite = (options) ->
                     else
                         values.push where.value
                         "#{where.key} #{where.op} ?").join ' AND '
+            if options.order_field?
+                query += ' ORDER BY ' + options.order_field + ' ' + options.order_direction
             if options.limit?
                 query += ' LIMIT ' + options.limit
             if options.offset?

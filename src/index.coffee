@@ -5,24 +5,23 @@ base          = require './Model'
 _             = require 'underscore'
 
 module.exports = (db_options, models_directory, callback) ->
+    _coffee = require.extensions['.coffee']
     require.extensions['.coffee'] = (module, filename) ->
         if 0 == filename.indexOf models_directory
             # Take first part of filename and capitalize
             s = filename.split('.').shift().split('/').pop()
-            model = do (s) -> s.charAt(0).toUpperCase() + s.substring 1
+            model = s.charAt(0).toUpperCase() + s.substring 1
             # Wrap it so we can pass in the model superclass
             prefix = "module.exports = (function(Model) { var m = \n"
             suffix = "\nreturn m; });";
 
             content = prefix + (coffee_script.compile fs.readFileSync(filename, 'utf8') + "return #{model}", {filename}) + suffix
-            console.log content
+            module._compile content, filename
         else
-            content = coffee_script.compile fs.readFileSync(filename, 'utf8'), {filename}
+            _coffee module, filename
 
-        module._compile content, filename
-
-    database = db.factory(db_options)
-    model_list = fs.readdirSync(models_directory)
+    database = db.factory db_options
+    model_list = fs.readdirSync models_directory
     models = {}
     after = _.after model_list.length, ->
         for name, model of models

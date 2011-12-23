@@ -1,6 +1,39 @@
 _ = require 'underscore'
 EventEmitter = require('events').EventEmitter
 
+validators =
+    presence: (field, presence) ->
+        presence == ('' != field.replace /^\s+|\s+$/g, '').length > 0
+messages =
+    presence: "{field} can't be empty"
+###
+    inclusion: "is not included in the list"
+    exclusion: "is reserved"
+    invalid: "is invalid"
+    confirmation: "doesn't match confirmation"
+    accepted: "must be accepted"
+    blank: "can't be blank"
+    too_long: "is too long (maximum is %{count} characters)"
+    too_short: "is too short (minimum is %{count} characters)"
+    wrong_length: "is the wrong length (should be %{count} characters)"
+    not_a_number: "is not a number"
+    not_an_integer: "must be an integer"
+    greater_than: "must be greater than %{count}"
+    greater_than_or_equal_to: "must be greater than or equal to %{count}"
+    equal_to: "must be equal to %{count}"
+    less_than: "must be less than %{count}"
+    less_than_or_equal_to: "must be less than or equal to %{count}"
+    odd: "must be odd"
+    even: "must be even"
+###
+
+message = (field, validation, options) ->
+    options.push field
+    message = messages[validation]
+    message = message.replace '{' + k + '}', v for k, v of options
+    message
+
+
 module.exports = class Model extends EventEmitter
     # INITIALIZATION METHODS
 
@@ -29,6 +62,7 @@ module.exports = class Model extends EventEmitter
         @prototype._associations[name] = { type: 'has_one', options }
 
     @validates: (name, options = {}) ->
+        @prototype._validations ?= {}
         @prototype._validations[name] = options
 
     # GENERAL METHODS
@@ -86,7 +120,7 @@ module.exports = class Model extends EventEmitter
     @new: (options) -> new @self (options)
 
     @find: (id, callback) ->
-        @where('id', id).limit(1).each callback
+        @where('id', id).limit(1).all (r) -> callback r[0] ? {}
 
     @create: (options, callback) -> @new(options).save callback
 
@@ -103,14 +137,15 @@ module.exports = class Model extends EventEmitter
                 if assoc.type == 'has_many'
                     this[name + 's'] = @_models[class_name].where(assoc.options.foreign_key ? @_name.toLowerCase() + '_id', @id)
                 else if assoc.type == 'has_one'
-                    this[name] = (cb) -> @_models[class_name].where(assoc.options.foreign_key ? @_name.toLowerCase() + '_id', @id).limit(1).each cb
+                    this[name] = (cb) -> @_models[class_name].where(assoc.options.foreign_key ? @_name.toLowerCase() + '_id', @id).limit(1).all (r) -> cb r[0] ? {}
                 else if assoc.type == 'belongs_to'
-                    this[name] = (cb) -> @_models[class_name].where('id', this[assoc.options.foreign_key ? @_name.toLowerCase() + '_id']).limit(1).each cb
+                    this[name] = (cb) -> @_models[class_name].where('id', this[assoc.options.foreign_key ? name.toLowerCase() + '_id']).limit(1).all (r) -> cb r[0] ? {}
 
     _hydrate: (values) ->
         values ?= {}
         for key, value of values
             this[key] = value
+        @emit 'load', this
 
     _dehydrate: ->
         values = {}
@@ -120,27 +155,20 @@ module.exports = class Model extends EventEmitter
 
     valid: ->
         valid = true
+        @errors = []
         for key, validations of @_validations
             for name, options of validations
-                if !_(options).isArray()
-                    options = [options]
-                valid = valid && @validations[name].call this, [this[key]].concat options
+                if !validators[name].apply this, options
+                    @errors.push message key, name, options
+                    valid = false
         valid
 
     save: (callback) ->
         @emit 'beforeSave', this
         @db.save @table, @_dehydrate(), (id) =>
-            this.id = id
+            if id then this.id = id
             @emit 'afterSave', this
             callback this
 
     destroy: (callback) ->
         @db.destroy @id, callback
-
-
-    validations: {
-        presence: (field, presence) ->
-            ('' != field.replace /^\s+|\s+$/g, '') == presence
-    }
-
-
