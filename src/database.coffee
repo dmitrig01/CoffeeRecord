@@ -63,8 +63,6 @@ exports.sqlite = (options) ->
                     values.push value
                     qs.push '?'
                 query = "INSERT INTO #{table} (" + keys.join(', ') + ') VALUES (' + qs.join(', ') + ')'
-            console.log query
-            console.log values
             db.run query, values, -> 
                 callback this.lastID
         fields: (table, callback) ->

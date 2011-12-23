@@ -3,7 +3,7 @@ EventEmitter = require('events').EventEmitter
 
 validators =
     presence: (field, presence) ->
-        presence == ('' != field.replace /^\s+|\s+$/g, '').length > 0
+        presence == ('' != field.replace /^\s+|\s+$/g, '')
 messages =
     presence: "{field} can't be empty"
 ###
@@ -27,10 +27,10 @@ messages =
     even: "must be even"
 ###
 
-message = (field, validation, options) ->
-    options.push field
+getMessage = (validation, field) ->
+    f = field.charAt(0).toUpperCase() + field.substring 1
     message = messages[validation]
-    message = message.replace '{' + k + '}', v for k, v of options
+    message = message.replace '{field}', f
     message
 
 
@@ -61,9 +61,9 @@ module.exports = class Model extends EventEmitter
         @prototype._associations ?= {}
         @prototype._associations[name] = { type: 'has_one', options }
 
-    @validates: (name, options = {}) ->
+    @validates: (name, validations = {}) ->
         @prototype._validations ?= {}
-        @prototype._validations[name] = options
+        @prototype._validations[name] = validations
 
     # GENERAL METHODS
 
@@ -155,11 +155,12 @@ module.exports = class Model extends EventEmitter
 
     valid: ->
         valid = true
-        @errors = []
+        @errors = {}
         for key, validations of @_validations
             for name, options of validations
-                if !validators[name].apply this, options
-                    @errors.push message key, name, options
+                if !validators[name] this[key], options
+                    @errors[key] ?= []
+                    @errors[key] = getMessage name, key
                     valid = false
         valid
 
