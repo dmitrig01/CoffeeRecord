@@ -4,8 +4,11 @@ EventEmitter = require('events').EventEmitter
 validators =
     presence: (field, presence) ->
         presence == ('' != field.replace /^\s+|\s+$/g, '')
+    options: (field, options) ->
+        _.indexOf(options, field) > -1
 messages =
     presence: "{field} can't be empty"
+    options: "{field} not within allowed values"
 ###
     inclusion: "is not included in the list"
     exclusion: "is reserved"
@@ -64,6 +67,11 @@ module.exports = class Model extends EventEmitter
     @validates: (name, validations = {}) ->
         @prototype._validations ?= {}
         @prototype._validations[name] = validations
+
+    @options: (name, options = {}) ->
+        @prototype._options ?= {}
+        @prototype._options[name] = options
+        @validates name, {options}
 
     # GENERAL METHODS
 
