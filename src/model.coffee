@@ -40,7 +40,8 @@ getMessage = (validation, field) ->
 module.exports = class Model extends EventEmitter
     # INITIALIZATION METHODS
 
-    @init: (db, self, callback) ->
+    @init: (db, models, self, callback) ->
+        self._models = self.prototype._models = models
         @self = self
         self.db = self.prototype.db = db
         self.prototype.table = self.table

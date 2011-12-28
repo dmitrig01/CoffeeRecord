@@ -5,33 +5,76 @@ base          = require './Model'
 _             = require 'underscore'
 
 module.exports = (db_options, models_directory, callback) ->
+    database = db.factory db_options
+    model_list = fs.readdirSync models_directory
+    models = [ base ]
+
+    modelNames = (for filename in model_list
+        s = filename.split('.').shift().split('/').pop()
+        s.charAt(0).toUpperCase() + s.substring 1)
+    index = 1
+
+    # Pull some ninja moves to make all models accessible to each other.
     _coffee = require.extensions['.coffee']
     require.extensions['.coffee'] = (module, filename) ->
         if 0 == filename.indexOf models_directory
-            # Take first part of filename and capitalize
-            s = filename.split('.').shift().split('/').pop()
-            model = s.charAt(0).toUpperCase() + s.substring 1
-            # Wrap it so we can pass in the model superclass
-            prefix = "module.exports = (function(Model) { var m = \n"
-            suffix = "\nreturn m; });";
+            args = ['Model']
+            vars = ['_ref']
+            i = 0
+            for model in modelNames
+                i++
+                if i == index
+                    args.push '__'
+                    vars.push model_name = model
+                else if i < index
+                    vars.push model
+                    args.push '__' + model.toLowerCase()
+                else
+                    args.push model
+            i = 1
+            nextArgs = ['Model']
+            next = ''
+            nextReturn = []
+            for model in modelNames
+                i++
+                if i == index
+                    nextArgs.push '__'
+                    next = '__' + model.toLowerCase()
+                    nextReturn.push model
+                else if i < index
+                    nextArgs.push '__' + model.toLowerCase()
+                    nextReturn.push model
+                else
+                    nextArgs.push model
 
-            content = prefix + (coffee_script.compile fs.readFileSync(filename, 'utf8') + "return #{model}", {filename}) + suffix
+            # Wrap it so we can pass in the model superclass
+            content = """
+module.exports = (function(#{args.join(', ')}) {
+var #{vars.join(', ')};
+#{model_name} = """ + (coffee_script.compile fs.readFileSync(filename, 'utf8') + "\nif #{model_name}? then return #{model_name}", { filename }) + "\n"
+            if nextReturn.length
+                content += "__ref = #{next}(#{nextArgs.join()});\n"
+                content += "#{ret} = __ref.#{ret}\n" for ret in nextReturn
+            nextReturn.push model_name
+            content += "return {\n"
+            content += "  '#{ret}': #{ret},\n" for ret in nextReturn
+            content += "}\n});"
+
             module._compile content, filename
         else
             _coffee module, filename
 
-    database = db.factory db_options
-    model_list = fs.readdirSync models_directory
-    models = {}
-    after = _.after model_list.length, ->
-        for name, model of models
-            model._models = model.prototype._models = models
-        callback models
+    
     for model_name in model_list
-        do (model_name) ->
-            model_name
-            model = (require models_directory + '/' + model_name) base 
-            model.init database, model, ->
-                model._name = model.prototype._name = model_name.split('.').shift()
-                models[model_name.split('.').shift()] = model
-                after()
+        models.push(require models_directory + '/' + model_name)
+        index++
+    require.extensions['.coffee'] = _coffee
+    model_list = models.pop().apply {}, models
+
+    after = _.after models.length, -> callback model_list
+
+    for name, model of model_list
+        model.init database, model_list, model, ->
+            model._name = model.prototype._name = name
+            model_list[name] = model
+            after()
