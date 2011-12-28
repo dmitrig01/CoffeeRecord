@@ -128,7 +128,7 @@ module.exports = class Model extends EventEmitter
     @new: (options) -> new @self (options)
 
     @find: (id, callback) ->
-        @where('id', id).limit(1).all (r) -> callback r[0] ? {}
+        @where('id', id).limit(1).all (r) -> callback r[0] ? null
 
     @create: (options, callback) -> @new(options).save callback
 
@@ -173,6 +173,7 @@ module.exports = class Model extends EventEmitter
         valid
 
     save: (callback) ->
+        callback ?= ->
         @emit 'beforeSave', this
         @db.save @table, @_dehydrate(), (id) =>
             if id then this.id = id
@@ -180,4 +181,4 @@ module.exports = class Model extends EventEmitter
             callback this
 
     destroy: (callback) ->
-        @db.destroy @id, callback
+        @db.destroy @table, @id, callback

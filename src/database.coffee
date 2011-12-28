@@ -63,7 +63,8 @@ exports.sqlite = (options) ->
                     values.push value
                     qs.push '?'
                 query = "INSERT INTO #{table} (" + keys.join(', ') + ') VALUES (' + qs.join(', ') + ')'
-            db.run query, values, -> 
+            db.run query, values, (err) -> 
+                if err then throw err
                 callback this.lastID
         fields: (table, callback) ->
             types =
@@ -78,4 +79,6 @@ exports.sqlite = (options) ->
                 for field in fields
                     finalFields[field.name] = if field.pk then 'serial' else types[field.type]
                 callback finalFields
+        destroy: (table, id, callback) ->
+            db.run "DELETE FROM #{table} WHERE id = ?", [ id ], callback
     }
