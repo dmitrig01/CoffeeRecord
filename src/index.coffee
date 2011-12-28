@@ -51,7 +51,11 @@ module.exports = (db_options, models_directory, callback) ->
             content = """
 module.exports = (function(#{args.join(', ')}) {
 var #{vars.join(', ')};
-#{model_name} = """ + (coffee_script.compile fs.readFileSync(filename, 'utf8') + "\nif #{model_name}? then return #{model_name}", { filename }) + "\n"
+#{model_name} = """ + (coffee_script.compile fs.readFileSync(filename, 'utf8') + """
+
+if #{model_name}?
+    #{model_name}._name = #{model_name}.prototype._name = '#{model_name}'
+    return #{model_name}""", { filename }) + "\n"
             if nextReturn.length
                 content += "__ref = #{next}(#{nextArgs.join()});\n"
                 content += "#{ret} = __ref.#{ret}\n" for ret in nextReturn
